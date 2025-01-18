@@ -466,16 +466,31 @@ const getSingleOrders = asyncHandler(async (req, res) => {
 
 const updateOrder = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const { status, email } = req.body;
   console.log(id);
 
   try {
-    const orders = await Order.findById(id);
-    orders.orderStatus = req.body.status;
-    await orders.save();
+    const order = await Order.findById(id);
 
-    res.json(orders);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    order.orderStatus = status;
+    await order.save();
+
+    const emailData = {
+      to: email,
+      subject: "Your Order Status Has Been Updated",
+      text: `Hello, your order status is now: ${order.orderStatus}`,
+      htm: `<p>Hello,</p><p>Your order status is now: <strong>${order.orderStatus}</strong>.</p>`,
+    };
+
+    await sendEmail(emailData);
+
+    res.status(200).json(order);
   } catch (error) {
-    throw new Error(error);
+    res.status(500).json({ message: error.message });
   }
 });
 
