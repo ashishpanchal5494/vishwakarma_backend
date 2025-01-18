@@ -24,7 +24,7 @@ app.use(morgan("dev"));
 // app.use(cors());
 
 const allowedOrigins = [
-  "https://vishwakarmastore.netlify.app",
+  "https://mern-e-commerce-admin-panel.onrender.com",
   "https://mern-e-commerce-frontend-steel.vercel.app",
 ];
 
