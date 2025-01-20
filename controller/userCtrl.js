@@ -369,6 +369,24 @@ const getUserCart = asyncHandler(async (req, res) => {
   }
 });
 
+const emptyCart = async (req, res) => {
+  const { _id } = req.user; // Get the authenticated user's ID
+  validateMongoDbId(_id); // Validate the user ID
+  try {
+    // Assuming the user's ID is available in req.user
+
+    // Remove all cart items for the user
+    const result = await Cart.deleteMany({ userId: _id });
+
+    res.status(200).json({
+      message: "Cart emptied successfully",
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error emptying cart", error });
+  }
+};
+
 const removeProductFromCart = asyncHandler(async (req, res) => {
   const { _id } = req.user;
   const { cartItemId } = req.params;
@@ -406,22 +424,114 @@ const createOrder = asyncHandler(async (req, res) => {
     totalPriceAfterDiscount,
     paymentInfo,
   } = req.body;
-  const { _id } = req.user;
+
+  const { _id: userId, email } = req.user;
+
+  // Validate required fields
+  if (!shippingInfo) {
+    return res.status(400).json({
+      success: false,
+      message: "Missing required fields: shippingInfo",
+    });
+  }
+  if (!orderItems) {
+    return res.status(400).json({
+      success: false,
+      message: "Missing required fields: orderItems",
+    });
+  }
+  if (!totalPrice) {
+    return res.status(400).json({
+      success: false,
+      message: "Missing required fields: totalPrice",
+    });
+  }
+  if (!totalPriceAfterDiscount) {
+    return res.status(400).json({
+      success: false,
+      message: "Missing required fields: totalPriceAfterDiscount",
+    });
+  }
+  if (!paymentInfo) {
+    return res.status(400).json({
+      success: false,
+      message: "Missing required fields: paymentInfo",
+    });
+  }
+
   try {
+    // Create the order
     const order = await Order.create({
       shippingInfo,
       orderItems,
       totalPrice,
       totalPriceAfterDiscount,
       paymentInfo,
-      user: _id,
+      user: userId,
     });
-    res.json({
-      order,
+
+    const emailData = {
+      to: email,
+      subject: "Order Confirmation and Details",
+      text: `Thank you for your order! Here are your order details:
+      
+Shipping Information:
+${shippingInfo.address}, ${shippingInfo.city}, ${shippingInfo.state}, ${
+        shippingInfo.pincode
+      }
+
+Order Items:
+${orderItems
+  .map((item) => `${item.product} (Quantity: ${item.quantity})`)
+  .join("\n")}
+
+Total Price: $${totalPrice}
+Discounted Price: $${totalPriceAfterDiscount}
+
+Payment Information:
+Payment Status: Payment Successfully
+Transaction ID: ${paymentInfo.transactionId}
+
+Thank you for shopping with us!`,
+      htm: `
+        <p>Thank you for your order! Here are your order details:</p>
+        <h3>Shipping Information:</h3>
+        <p>${shippingInfo.address}, ${shippingInfo.city}, ${
+        shippingInfo.state
+      }, ${shippingInfo.pincode}</p>
+        <h3>Order Items:</h3>
+        <ul>
+          ${orderItems
+            .map(
+              (item) =>
+                `<li>${item.product} (Quantity: ${item.quantity}) -₹ ${item.price}</li>`
+            )
+            .join("")}
+        </ul>
+        <h3>Total Price:</h3>
+        <p><strong>₹${totalPrice}</strong></p>
+        <h3>Discounted Price:</h3>
+        <p><strong>₹${totalPriceAfterDiscount}</strong></p>
+        <h3>Payment Information:</h3>
+        <p>Payment Status: <strong> Payment Successfully </strong></p>
+        <p>Transaction ID: <strong>${paymentInfo.razorpayOrderId}</strong></p>
+        <p>Thank you for shopping with us!</p>
+      `,
+    };
+
+    await sendEmail(emailData);
+
+    // Respond with the created order
+    res.status(201).json({
       success: true,
+      order,
     });
   } catch (error) {
-    throw new Error(error);
+    console.error("Error creating order:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create order. Please try again later.",
+    });
   }
 });
 
@@ -608,6 +718,7 @@ module.exports = {
   userCart,
   getUserCart,
   createOrder,
+  emptyCart,
   removeProductFromCart,
   updateProductQuantityFromCart,
   getMyOrders,
