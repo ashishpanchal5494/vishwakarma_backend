@@ -338,6 +338,69 @@ const getWishlist = asyncHandler(async (req, res) => {
   }
 });
 
+const addToWishlist = asyncHandler(async (req, res) => {
+  const { _id } = req.user; // Get the user ID from the authenticated user
+  const { productId } = req.body; // Get the product ID from the request body
+
+  try {
+    // Find the user by ID
+    const user = await User.findById(_id);
+
+    if (!user) {
+      res.status(404);
+      throw new Error("User not found");
+    }
+
+    // Check if the product is already in the wishlist
+    if (user.wishlist.includes(productId)) {
+      res.status(400);
+      throw new Error("Product already in wishlist");
+    }
+
+    // Add the product to the wishlist
+    user.wishlist.push(productId);
+    await user.save();
+
+    res.status(200).json({
+      message: "Product added to wishlist successfully",
+      wishlist: user.wishlist, // Return the updated wishlist
+    });
+  } catch (error) {
+    res.status(500);
+    throw new Error(error.message);
+  }
+});
+
+const deleteProductFromWishlist = asyncHandler(async (req, res) => {
+  const { _id } = req.user; // Authenticated user's ID
+  const { productId } = req.body; // Product ID from request params
+
+  console.log("Product ID:", productId); // Log for debugging
+  validateMongoDbId(_id); // Ensure the user ID is a valid MongoDB ObjectId
+
+  try {
+    // Update the user document to remove the product from the wishlist
+    const updatedUser = await User.findByIdAndUpdate(
+      _id,
+      { $pull: { wishlist: productId } }, // Use `$pull` to remove the product ID
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedUser) {
+      res.status(404);
+      throw new Error("User not found");
+    }
+
+    res.status(200).json({
+      message: "Product removed from wishlist successfully",
+      wishlist: updatedUser.wishlist, // Return the updated wishlist
+    });
+  } catch (error) {
+    res.status(500);
+    throw new Error(error.message);
+  }
+});
+
 const userCart = asyncHandler(async (req, res) => {
   const { productId, color, quantity, price } = req.body;
   const { _id } = req.user;
@@ -402,6 +465,7 @@ const removeProductFromCart = asyncHandler(async (req, res) => {
     throw new Error(error);
   }
 });
+
 const updateProductQuantityFromCart = asyncHandler(async (req, res) => {
   const { _id } = req.user;
   const { cartItemId, newQuantiy } = req.params;
@@ -714,6 +778,8 @@ module.exports = {
   resetPassword,
   loginAdmin,
   getWishlist,
+  addToWishlist,
+  deleteProductFromWishlist,
   saveAddress,
   userCart,
   getUserCart,

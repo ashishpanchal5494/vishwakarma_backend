@@ -29,6 +29,8 @@ const {
   getSingleOrders,
   updateOrder,
   emptyCart,
+  addToWishlist,
+  deleteProductFromWishlist,
 } = require("../controller/userCtrl");
 const { authMiddleware, isAdmin } = require("../middlewares/authMiddleware");
 const { checkout, paymentVerification } = require("../controller/paymentCtrl");
@@ -44,6 +46,7 @@ router.post("/admin-login", loginAdmin);
 router.post("/cart", authMiddleware, userCart);
 router.post("/order/checkout", authMiddleware, checkout);
 router.post("/order/paymentVerification", authMiddleware, paymentVerification);
+router.post("/addwishlist", authMiddleware, addToWishlist);
 /* router.post("/cart/applycoupon", authMiddleware, applyCoupon); */
 router.post("/cart/create-order", authMiddleware, createOrder);
 router.get("/all-users", getallUser);
@@ -63,6 +66,7 @@ router.get("/getyearlyorders", authMiddleware, isAdmin, getYearlyTotalOrders);
 router.get("/refresh", handleRefreshToken);
 router.get("/logout", logout);
 router.get("/wishlist", authMiddleware, getWishlist);
+
 router.get("/cart", authMiddleware, getUserCart);
 router.get("/:id", authMiddleware, isAdmin, getaUser);
 router.delete(
@@ -75,16 +79,16 @@ router.delete(
   authMiddleware,
   updateProductQuantityFromCart
 );
-
+router.delete("/removewishlist", authMiddleware, deleteProductFromWishlist);
 router.delete("/empty-cart", authMiddleware, emptyCart);
 
 router.delete("/:id", deleteaUser);
-/* router.put(
-  "/order/update-order/:id",
-  authMiddleware,
-  isAdmin,
-  updateOrderStatus
-); */
+//  router.put(
+//   "/order/update-order/:id",
+//   authMiddleware,
+//   isAdmin,
+//   updateOrderStatus
+// );
 router.put("/edit-user", authMiddleware, updatedUser);
 router.put("/block-user/:id", authMiddleware, isAdmin, blockUser);
 router.put("/unblock-user/:id", authMiddleware, isAdmin, unblockUser);
